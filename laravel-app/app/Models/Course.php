@@ -34,5 +34,10 @@ class Course extends Model
     {
         return $this->hasMany(Announcement::class);
     }
+
+    public function contents()
+    {
+        return $this->hasMany(CourseContent::class, 'course_id');
+    }
     
 }

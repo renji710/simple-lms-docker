@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\CourseContent;
 use App\Models\CourseMember;
 use App\Models\Comment;
+use App\Models\Course;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class CourseContentController extends Controller
 {
@@ -50,7 +52,6 @@ class CourseContentController extends Controller
             return response()->json(['message' => 'Failed to add comment', 'error' => $e->getMessage()], 500);
         }
     }
-
 
     public function show(CourseContent $content)
     {
@@ -95,5 +96,95 @@ class CourseContentController extends Controller
                 ];
             }),
         ]);
+    }
+
+    public function store(Request $request, Course $course)
+    {
+        $user = Auth::user();
+
+        if ($course->teacher_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized: You are not the teacher of this course.'], 403);
+        }
+
+        try {
+            $request->validate([
+                'name' => ['required', 'string', 'max:200', Rule::unique('course_contents')->where(function ($query) use ($course) {
+                    return $query->where('course_id', $course->id);
+                })],
+                'description' => 'nullable|string',
+                'video_url' => 'nullable|url|max:200',
+                'file_attachment' => 'nullable|string',
+                'parent_id' => 'nullable|exists:course_contents,id',
+            ]);
+
+            $content = $course->contents()->create([
+                'name' => $request->name,
+                'description' => $request->description,
+                'video_url' => $request->video_url,
+                'file_attachment' => $request->file_attachment,
+                'parent_id' => $request->parent_id,
+            ]);
+
+            return response()->json([
+                'message' => 'Course content created successfully!',
+                'content' => $content,
+            ], 201);
+
+        } catch (ValidationException $e) {
+            return response()->json(['message' => 'Validation Error', 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to create course content', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function update(Request $request, Course $course, CourseContent $content)
+    {
+        $user = Auth::user();
+
+        if ($content->course_id !== $course->id || $course->teacher_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized: You are not authorized to update this content.'], 403);
+        }
+
+        try {
+            $request->validate([
+                'name' => ['required', 'string', 'max:200', Rule::unique('course_contents')->ignore($content->id)->where(function ($query) use ($course) {
+                    return $query->where('course_id', $course->id);
+                })],
+                'description' => 'nullable|string',
+                'video_url' => 'nullable|url|max:200',
+                'file_attachment' => 'nullable|string',
+                'parent_id' => 'nullable|exists:course_contents,id',
+            ]);
+
+            $content->name = $request->name;
+            $content->description = $request->description;
+            $content->video_url = $request->video_url;
+            $content->file_attachment = $request->file_attachment;
+            $content->parent_id = $request->parent_id;
+            $content->save();
+
+            return response()->json([
+                'message' => 'Course content updated successfully!',
+                'content' => $content,
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json(['message' => 'Validation Error', 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to update course content', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroy(Course $course, CourseContent $content)
+    {
+        $user = Auth::user();
+
+        if ($content->course_id !== $course->id || $course->teacher_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized: You are not authorized to delete this content.'], 403);
+        }
+
+        $content->delete();
+
+        return response()->json(['message' => 'Course content deleted successfully!'], 200);
     }
 }

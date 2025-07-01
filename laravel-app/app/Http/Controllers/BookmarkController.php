@@ -28,7 +28,7 @@ class BookmarkController extends Controller
                                         ->first();
 
             if ($existingBookmark) {
-                return response()->json(['message' => 'Content already bookmarked.'], 409); // 409 Conflict
+                return response()->json(['message' => 'Content already bookmarked.'], 409);
             }
 
             $bookmark = Bookmark::create([

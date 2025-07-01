@@ -7,6 +7,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -90,5 +91,34 @@ class UserController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function index()
+    {
+        $user = Auth::user();
+
+        if ($user->id !== 1) {
+             return response()->json(['message' => 'Unauthorized: Only administrators can view all users.'], 403);
+        }
+
+        $users = User::select('id', 'username', 'email', 'fullname', 'created_at', 'updated_at')->get();
+
+        return response()->json([
+            'message' => 'Users retrieved successfully!',
+            'users' => $users,
+        ]);
+    }
+
+    public function destroy(User $user)
+    {
+        $loggedInUser = Auth::user();
+
+        if ($loggedInUser->id !== 1 || $loggedInUser->id === $user->id) {
+            return response()->json(['message' => 'Unauthorized: Only administrators can delete users, and cannot delete themselves.'], 403);
+        }
+
+        $user->delete();
+
+        return response()->json(['message' => 'User deleted successfully!'], 200);
     }
 }

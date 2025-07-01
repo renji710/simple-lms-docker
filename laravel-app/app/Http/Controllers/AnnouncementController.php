@@ -23,7 +23,7 @@ class AnnouncementController extends Controller
             $request->validate([
                 'title' => 'required|string|max:255',
                 'content' => 'required|string',
-                'publish_date' => 'nullable|date_format:Y-m-d H:i:s', // Format YYYY-MM-DD HH:MM:SS
+                'publish_date' => 'nullable|date_format:Y-m-d H:i:s',
             ]);
 
             $announcement = $course->announcements()->create([
